@@ -14,10 +14,13 @@ st.set_page_config(page_title="Enterprise SOC Simulator", layout="wide")
 
 st.title("🛡️ Enterprise SOC Simulation Dashboard")
 
-# ---------------- SIMPLE LOGIN (SOC ROLE SIM) ----------------
+# ---------------- SOC LOGIN ----------------
 st.sidebar.title("SOC Analyst Login")
 
-role = st.sidebar.selectbox("Select Role", ["Tier 1 Analyst", "Tier 2 Analyst", "SOC Manager"])
+role = st.sidebar.selectbox(
+    "Select Role",
+    ["Tier 1 Analyst", "Tier 2 Analyst", "SOC Manager"]
+)
 
 st.sidebar.write(f"Logged in as: **{role}**")
 
@@ -52,6 +55,25 @@ RISKY_TLDS = {"zip", "xyz", "click", "tk", "ml"}
 URL_RE = re.compile(r"https?://[^\s<>\")]+", re.I)
 
 
+# ---------------- EXPLAINABILITY ----------------
+def explain_email(text):
+    keywords = [
+        "urgent", "verify", "password", "click",
+        "login", "account", "suspended",
+        "wire", "transfer"
+    ]
+
+    found = []
+    lower = text.lower()
+
+    for k in keywords:
+        if k in lower:
+            found.append(k)
+
+    return found
+
+
+# ---------------- URL SCORING ----------------
 def url_score(text):
     score = 0
     urls = URL_RE.findall(text)
@@ -72,27 +94,28 @@ def url_score(text):
 # ---------------- INCIDENT LOG SYSTEM ----------------
 if "logs" not in st.session_state:
     st.session_state.logs = pd.DataFrame(columns=[
-        "Email", "Risk", "Score"
+        "Email", "Risk", "Score", "ML Score", "URL Score"
     ])
 
 
-# ---------------- PREDICTION ----------------
+# ---------------- MAIN ANALYSIS ----------------
 def analyze(text):
     vec = vectorizer.transform([text])
-    prob = model.predict_proba(vec)[0][1] * 100
+    ml_prob = model.predict_proba(vec)[0][1] * 100
 
     url_s, urls = url_score(text)
+    keywords = explain_email(text)
 
-    final = (prob * 0.7) + (url_s * 0.3)
+    final = (ml_prob * 0.7) + (url_s * 0.3)
 
     if final >= 70:
-        risk = "HIGH"
+        risk = "🔴 HIGH"
     elif final >= 40:
-        risk = "MEDIUM"
+        risk = "🟠 MEDIUM"
     else:
-        risk = "LOW"
+        risk = "🟢 LOW"
 
-    return risk, final, prob, url_s, urls
+    return risk, final, ml_prob, url_s, urls, keywords
 
 
 # ---------------- TABS ----------------
@@ -115,25 +138,34 @@ with tab1:
 
         if email.strip():
 
-            risk, score, ml, url_s, urls = analyze(email)
+            risk, score, ml, url_s, urls, keywords = analyze(email)
 
             col1.metric("Risk Level", risk)
             col2.metric("Threat Score", f"{score:.2f}")
 
             st.progress(min(int(score), 100))
 
+            st.subheader("🧠 Explanation Engine")
+            if keywords:
+                st.write("Suspicious keywords detected:")
+                st.write(keywords)
+            else:
+                st.write("No major phishing keywords found")
+
             if urls:
-                st.write("Detected URLs:")
+                st.subheader("🔗 Detected URLs")
                 for u in urls:
                     st.code(u)
 
-            # log incident
+            # LOG INCIDENT (UPGRADED)
             st.session_state.logs = pd.concat([
                 st.session_state.logs,
                 pd.DataFrame([{
                     "Email": email[:60],
                     "Risk": risk,
-                    "Score": score
+                    "Score": round(score, 2),
+                    "ML Score": round(ml, 2),
+                    "URL Score": url_s
                 }])
             ], ignore_index=True)
 
@@ -164,7 +196,7 @@ with tab2:
     if len(logs) > 0:
 
         st.metric("Total Alerts", len(logs))
-        st.metric("High Risk Alerts", len(logs[logs["Risk"] == "HIGH"]))
+        st.metric("High Risk Alerts", len(logs[logs["Risk"] == "🔴 HIGH"]))
 
         st.bar_chart(logs["Risk"].value_counts())
 
@@ -178,16 +210,17 @@ with tab3:
 
     st.subheader("Incident Export System")
 
-    if len(st.session_state.logs) > 0:
+    logs = st.session_state.logs
+
+    if len(logs) > 0:
 
         st.download_button(
             "Download SOC Report",
-            st.session_state.logs.to_csv(index=False),
+            logs.to_csv(index=False),
             "soc_report.csv"
         )
 
-        st.write("Preview:")
-        st.dataframe(st.session_state.logs)
+        st.dataframe(logs)
 
     else:
         st.info("No reports available")
