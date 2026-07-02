@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import re
 import time
+import random
+import threading
 from urllib.parse import urlparse
 
 from sklearn.model_selection import train_test_split
@@ -10,12 +12,12 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 
 # ---------------- PAGE SETUP ----------------
-st.set_page_config(page_title="Enterprise SOC Simulator", layout="wide")
+st.set_page_config(page_title="SOC Threat Intelligence Platform", layout="wide")
 
-st.title("🛡️ Enterprise SOC Simulation Dashboard")
+st.title("🛡️ SOC Threat Intelligence & Live Attack Simulation Platform")
 
-# ---------------- SOC LOGIN ----------------
-st.sidebar.title("SOC Analyst Login")
+# ---------------- SOC ROLE LOGIN ----------------
+st.sidebar.title("SOC Analyst Panel")
 
 role = st.sidebar.selectbox(
     "Select Role",
@@ -49,11 +51,10 @@ X_test_vec = vectorizer.transform(X_test)
 model = MultinomialNB()
 model.fit(X_train_vec, y_train)
 
-# ---------------- URL THREAT INTEL ----------------
+# ---------------- THREAT INTEL ----------------
 SHORTENERS = {"bit.ly", "tinyurl.com", "t.co"}
 RISKY_TLDS = {"zip", "xyz", "click", "tk", "ml"}
 URL_RE = re.compile(r"https?://[^\s<>\")]+", re.I)
-
 
 # ---------------- EXPLAINABILITY ----------------
 def explain_email(text):
@@ -63,15 +64,7 @@ def explain_email(text):
         "wire", "transfer"
     ]
 
-    found = []
-    lower = text.lower()
-
-    for k in keywords:
-        if k in lower:
-            found.append(k)
-
-    return found
-
+    return [k for k in keywords if k in text.lower()]
 
 # ---------------- URL SCORING ----------------
 def url_score(text):
@@ -90,15 +83,13 @@ def url_score(text):
 
     return min(score, 100), urls
 
-
-# ---------------- INCIDENT LOG SYSTEM ----------------
+# ---------------- INCIDENT LOG ----------------
 if "logs" not in st.session_state:
     st.session_state.logs = pd.DataFrame(columns=[
         "Email", "Risk", "Score", "ML Score", "URL Score"
     ])
 
-
-# ---------------- MAIN ANALYSIS ----------------
+# ---------------- ANALYSIS ENGINE ----------------
 def analyze(text):
     vec = vectorizer.transform([text])
     ml_prob = model.predict_proba(vec)[0][1] * 100
@@ -117,22 +108,55 @@ def analyze(text):
 
     return risk, final, ml_prob, url_s, urls, keywords
 
+# ---------------- ATTACK STREAM ----------------
+attack_pool = [
+    "URGENT: Your account has been suspended verify immediately",
+    "Click here to reset your password before access is lost",
+    "Security alert: unusual login detected from unknown device",
+    "Your bank account is locked confirm identity now",
+    "Invoice overdue wire transfer required ASAP",
+    "Hey just checking in about the meeting tomorrow",
+    "Project update attached please review",
+    "You have won a gift card claim it now"
+]
+
+if "streaming" not in st.session_state:
+    st.session_state.streaming = False
+
+def stream_attacks():
+    while st.session_state.streaming:
+        email = random.choice(attack_pool)
+
+        risk, score, ml, url_s, urls, keywords = analyze(email)
+
+        new_log = pd.DataFrame([{
+            "Email": email[:60],
+            "Risk": risk,
+            "Score": round(score, 2),
+            "ML Score": round(ml, 2),
+            "URL Score": url_s
+        }])
+
+        st.session_state.logs = pd.concat(
+            [st.session_state.logs, new_log],
+            ignore_index=True
+        )
+
+        time.sleep(2)
 
 # ---------------- TABS ----------------
 tab1, tab2, tab3 = st.tabs([
     "📧 Live SOC Feed",
-    "📊 Threat Analytics",
+    "🔥 Real-Time Stream",
     "📁 Incident Reports"
 ])
 
 # ================= TAB 1 =================
 with tab1:
 
-    st.subheader("Live Email Threat Detection")
+    st.subheader("Manual Email Analysis")
 
     email = st.text_area("Paste Email", height=200)
-
-    col1, col2 = st.columns(2)
 
     if st.button("Analyze Email"):
 
@@ -140,24 +164,20 @@ with tab1:
 
             risk, score, ml, url_s, urls, keywords = analyze(email)
 
+            col1, col2 = st.columns(2)
             col1.metric("Risk Level", risk)
             col2.metric("Threat Score", f"{score:.2f}")
 
             st.progress(min(int(score), 100))
 
             st.subheader("🧠 Explanation Engine")
-            if keywords:
-                st.write("Suspicious keywords detected:")
-                st.write(keywords)
-            else:
-                st.write("No major phishing keywords found")
+            st.write(keywords if keywords else "No suspicious keywords detected")
 
             if urls:
-                st.subheader("🔗 Detected URLs")
+                st.subheader("🔗 URLs Found")
                 for u in urls:
                     st.code(u)
 
-            # LOG INCIDENT (UPGRADED)
             st.session_state.logs = pd.concat([
                 st.session_state.logs,
                 pd.DataFrame([{
@@ -172,55 +192,48 @@ with tab1:
         else:
             st.warning("Enter email first")
 
-    # LIVE SIMULATION MODE
-    if st.button("Run Live SOC Simulation"):
-
-        samples = [
-            "Urgent verify your account now",
-            "Team meeting tomorrow",
-            "Click here to reset password",
-            "Project update attached"
-        ]
-
-        for s in samples:
-            st.write("Analyzing:", s)
-            time.sleep(1)
-
 # ================= TAB 2 =================
 with tab2:
 
-    st.subheader("Threat Analytics Dashboard")
+    st.subheader("🔥 Live SOC Stream Control")
 
-    logs = st.session_state.logs
+    col1, col2 = st.columns(2)
 
-    if len(logs) > 0:
+    if col1.button("▶ Start Stream"):
+        st.session_state.streaming = True
+        threading.Thread(target=stream_attacks, daemon=True).start()
+        st.success("SOC stream started")
 
-        st.metric("Total Alerts", len(logs))
-        st.metric("High Risk Alerts", len(logs[logs["Risk"] == "🔴 HIGH"]))
+    if col2.button("⛔ Stop Stream"):
+        st.session_state.streaming = False
+        st.warning("SOC stream stopped")
 
-        st.bar_chart(logs["Risk"].value_counts())
+    st.subheader("🚨 Live Threat Feed")
 
-        st.dataframe(logs)
+    latest = st.session_state.logs.tail(10)
 
-    else:
-        st.info("No incidents yet")
+    for _, row in latest.iterrows():
+        if row["Risk"] == "🔴 HIGH":
+            st.error(f"{row['Email']} | Score: {row['Score']}")
+        elif row["Risk"] == "🟠 MEDIUM":
+            st.warning(f"{row['Email']} | Score: {row['Score']}")
+        else:
+            st.info(f"{row['Email']} | Score: {row['Score']}")
 
 # ================= TAB 3 =================
 with tab3:
 
-    st.subheader("Incident Export System")
+    st.subheader("SOC Incident Reports")
 
-    logs = st.session_state.logs
+    if len(st.session_state.logs) > 0:
 
-    if len(logs) > 0:
+        st.dataframe(st.session_state.logs)
 
         st.download_button(
             "Download SOC Report",
-            logs.to_csv(index=False),
+            st.session_state.logs.to_csv(index=False),
             "soc_report.csv"
         )
 
-        st.dataframe(logs)
-
     else:
-        st.info("No reports available")
+        st.info("No incidents recorded yet")
