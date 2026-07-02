@@ -1,3 +1,4 @@
+import streamlit as st
 import re
 from urllib.parse import urlparse
 
@@ -30,7 +31,7 @@ def analyze_email(email_text):
     for phrase, points in SUSPICIOUS_WORDS.items():
         if phrase in text:
             score += points
-            findings.append(f"+{points}: suspicious phrase found: '{phrase}'")
+            findings.append(f"Suspicious phrase found: '{phrase}'")
 
     urls = URL_RE.findall(email_text)
 
@@ -40,59 +41,59 @@ def analyze_email(email_text):
 
         if re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", host):
             score += 18
-            findings.append(f"+18: link uses raw IP address: {host}")
+            findings.append("Link uses a raw IP address.")
 
         if host in SHORTENERS:
             score += 14
-            findings.append(f"+14: shortened URL detected: {host}")
+            findings.append("Shortened URL detected.")
 
         if "@" in parsed.netloc:
             score += 16
-            findings.append(f"+16: URL contains '@', which may hide destination: {url}")
+            findings.append("URL contains '@'.")
 
         tld = host.rsplit(".", 1)[-1] if "." in host else ""
         if tld in RISKY_TLDS:
             score += 8
-            findings.append(f"+8: risky domain ending '.{tld}' in {host}")
+            findings.append(f"Risky domain ending '.{tld}' detected.")
 
     if "dear customer" in text or "dear user" in text:
         score += 5
-        findings.append("+5: generic greeting detected")
+        findings.append("Generic greeting detected.")
 
     score = min(score, 100)
 
     if score >= 70:
-        verdict = "High risk - likely phishing"
+        verdict = "🔴 High Risk - Likely Phishing"
     elif score >= 40:
-        verdict = "Medium risk - suspicious"
+        verdict = "🟠 Medium Risk - Suspicious"
     elif score >= 20:
-        verdict = "Low risk - review carefully"
+        verdict = "🟡 Low Risk - Review Carefully"
     else:
-        verdict = "Minimal risk"
+        verdict = "🟢 Minimal Risk"
 
-    return {
-        "risk_score": score,
-        "verdict": verdict,
-        "urls_found": urls,
-        "findings": findings,
-    }
+    return score, verdict, findings
 
 
-if __name__ == "__main__":
-    print("Paste the suspicious email. Press Ctrl+Z then Enter on Windows, or Ctrl+D on Mac/Linux:")
-    import sys
-    email = sys.stdin.read()
+st.set_page_config(page_title="AI Phishing Detector", page_icon="🛡️")
 
-    result = analyze_email(email)
+st.title("🛡️ AI-Powered Phishing Email Detector")
+st.write("Paste an email below to analyze it for phishing indicators.")
 
-    print("\nPhishing Analysis")
-    print("-----------------")
-    print(f"Risk score: {result['risk_score']}/100")
-    print(f"Verdict: {result['verdict']}")
+email = st.text_area("Email Text", height=250)
 
-    print("\nFindings:")
-    if result["findings"]:
-        for item in result["findings"]:
-            print(f"- {item}")
+if st.button("Analyze Email"):
+    if email.strip():
+        score, verdict, findings = analyze_email(email)
+
+        st.subheader("Results")
+        st.metric("Risk Score", f"{score}/100")
+        st.write(f"**Verdict:** {verdict}")
+
+        st.subheader("Findings")
+        if findings:
+            for item in findings:
+                st.write(f"• {item}")
+        else:
+            st.success("No major phishing indicators were detected.")
     else:
-        print("- No strong phishing indicators found.")
+        st.warning("Please paste an email before analyzing.")hishing indicators found.")
