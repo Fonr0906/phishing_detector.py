@@ -1,4 +1,4 @@
-# 🛡️ SOC Threat Intelligence & Live Attack Simulation Platform
+# SOC Threat Intelligence & Live Attack Simulation Platform
 
 ## Overview
 This project is a Security Operations Center (SOC) simulation platform that combines machine learning, rule-based threat intelligence, and real-time attack stream simulation to mimic enterprise cybersecurity monitoring environments.
@@ -7,35 +7,35 @@ It analyzes emails for phishing attempts, assigns risk scores, and generates liv
 
 ---
 
-## 🔥 Features
+## Features
 
-### 🧠 AI Threat Detection
+### AI Threat Detection
 - Machine learning model (Naive Bayes)
 - TF-IDF text classification
 - Phishing probability scoring
 
-### 🌐 Threat Intelligence Engine
+### Threat Intelligence Engine
 - Suspicious URL detection
 - Risky domain analysis
 - Obfuscated link detection
 
-### 🚨 Live SOC Simulation
+### Live SOC Simulation
 - Real-time attack stream generator
 - Continuous email threat ingestion
 - Automatic risk classification
 
-### 📊 SOC Dashboard
+### SOC Dashboard
 - Live threat feed (HIGH / MEDIUM / LOW alerts)
 - Incident logging system
 - Historical security event tracking
 
-### 📁 Incident Reporting
+### Incident Reporting
 - Exportable SOC logs (CSV format)
 - Analyst-ready structured reports
 
 ---
 
-## 🧪 How It Works
+##  How It Works
 1. Email is input or generated in live stream
 2. ML model predicts phishing probability
 3. URL intelligence engine evaluates links
@@ -45,7 +45,7 @@ It analyzes emails for phishing attempts, assigns risk scores, and generates liv
 
 ---
 
-## 🛠️ Technologies Used
+## Technologies Used
 - Python
 - Streamlit
 - Scikit-learn
@@ -54,7 +54,7 @@ It analyzes emails for phishing attempts, assigns risk scores, and generates liv
 
 ---
 
-## 🎯 SOC Simulation Capabilities
+## SOC Simulation Capabilities
 This system simulates:
 - Security Operations Center alert pipelines
 - Real-time threat monitoring
@@ -63,7 +63,7 @@ This system simulates:
 
 ---
 
-## 🚀 Future Enhancements
+## Future Enhancements
 - Integration with VirusTotal API
 - MITRE ATT&CK classification mapping
 - Role-based authentication system
@@ -73,7 +73,7 @@ This system simulates:
 
 ---
 
-## 💼 Career Relevance
+## Career Relevance
 This project demonstrates practical skills in:
 - Cybersecurity threat detection
 - Machine learning applications in security
@@ -82,5 +82,5 @@ This project demonstrates practical skills in:
 
 ---
 
-## 📌 Author
+## Author
 Built as a cybersecurity portfolio project demonstrating SOC-level threat intelligence simulation and machine learning integration.
