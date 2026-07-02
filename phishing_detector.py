@@ -28,37 +28,44 @@ def analyze_email(email_text):
     score = 0
     text = email_text.lower()
 
+    # Check suspicious phrases
     for phrase, points in SUSPICIOUS_WORDS.items():
         if phrase in text:
             score += points
-            findings.append(f"Suspicious phrase found: '{phrase}'")
+            findings.append(f"+{points}: suspicious phrase found: '{phrase}'")
 
+    # Extract URLs
     urls = URL_RE.findall(email_text)
 
     for url in urls:
         parsed = urlparse(url)
         host = (parsed.hostname or "").lower()
 
+        # IP address check
         if re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", host):
             score += 18
-            findings.append("Link uses a raw IP address.")
+            findings.append(f"+18: link uses raw IP address: {host}")
 
+        # URL shorteners
         if host in SHORTENERS:
             score += 14
-            findings.append("Shortened URL detected.")
+            findings.append(f"+14: shortened URL detected: {host}")
 
+        # @ symbol hiding real domain
         if "@" in parsed.netloc:
             score += 16
-            findings.append("URL contains '@'.")
+            findings.append(f"+16: suspicious '@' usage in URL: {url}")
 
+        # risky TLD
         tld = host.rsplit(".", 1)[-1] if "." in host else ""
         if tld in RISKY_TLDS:
             score += 8
-            findings.append(f"Risky domain ending '.{tld}' detected.")
+            findings.append(f"+8: risky domain ending '.{tld}' in {host}")
 
+    # generic greetings
     if "dear customer" in text or "dear user" in text:
         score += 5
-        findings.append("Generic greeting detected.")
+        findings.append("+5: generic greeting detected")
 
     score = min(score, 100)
 
@@ -74,26 +81,29 @@ def analyze_email(email_text):
     return score, verdict, findings
 
 
-st.set_page_config(page_title="AI Phishing Detector", page_icon="🛡️")
+# ---------------- STREAMLIT UI ----------------
 
-st.title("🛡️ AI-Powered Phishing Email Detector")
-st.write("Paste an email below to analyze it for phishing indicators.")
+st.set_page_config(page_title="Phishing Detector", page_icon="🛡️")
 
-email = st.text_area("Email Text", height=250)
+st.title("🛡️ AI Phishing Email Detector")
+st.write("Paste an email below to analyze it for phishing risks.")
+
+email = st.text_area("Email Content", height=250)
 
 if st.button("Analyze Email"):
     if email.strip():
         score, verdict, findings = analyze_email(email)
 
-        st.subheader("Results")
+        st.subheader("Result")
         st.metric("Risk Score", f"{score}/100")
         st.write(f"**Verdict:** {verdict}")
 
         st.subheader("Findings")
+
         if findings:
-            for item in findings:
-                st.write(f"• {item}")
+            for f in findings:
+                st.write("• " + f)
         else:
-            st.success("No major phishing indicators were detected.")
+            st.success("No major phishing indicators found.")
     else:
-        st.warning("Please paste an email before analyzing.")hishing indicators found.")
+        st.warning("Please paste an email before analyzing.")
